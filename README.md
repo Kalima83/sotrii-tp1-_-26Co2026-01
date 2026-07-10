@@ -8,5 +8,4 @@
 
 | N° SIU | Apellidos, Nombres | Fecha | Deadline | 
 | :----- | :--------------------- | :------: | :-------: | 
-| e2614 | Quispe, Carlos | 10/07/26 | Semana 04 |
 | a2104 | Bazán, Daniel | 10/07/26 | Semana 04 |
