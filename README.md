@@ -5,6 +5,7 @@
 ### Cohorte-Grupo: 26Co2026-01 
 ### Modelo de placa: F446RE
 ### Responsable de la entrega
+
 | N° SIU | Apellidos, Nombres | Fecha | Deadline | 
 | :----- | :--------------------- | :------: | :-------: | 
 | e2614 | Quispe, Carlos | 10/07/26 | Semana 04 |
