@@ -1,0 +1,2 @@
+../app/src/task_uart.c:78:6:task_uart_tx	32	static
+../app/src/task_uart.c:110:6:task_uart_rx	32	static
