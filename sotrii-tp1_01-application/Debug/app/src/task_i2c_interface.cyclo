@@ -1,0 +1,5 @@
+../app/src/task_i2c_interface.c:67:6:open_i2c	5
+../app/src/task_i2c_interface.c:98:6:release_i2c	2
+../app/src/task_i2c_interface.c:117:6:write_i2c	2
+../app/src/task_i2c_interface.c:135:6:read_i2c	1
+../app/src/task_i2c_interface.c:141:6:ioctl_i2c	1

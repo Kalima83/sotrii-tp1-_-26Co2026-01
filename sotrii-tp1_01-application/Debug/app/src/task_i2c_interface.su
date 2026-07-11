@@ -1,0 +1,5 @@
+../app/src/task_i2c_interface.c:67:6:open_i2c	48	static,ignoring_inline_asm
+../app/src/task_i2c_interface.c:98:6:release_i2c	24	static
+../app/src/task_i2c_interface.c:117:6:write_i2c	24	static
+../app/src/task_i2c_interface.c:135:6:read_i2c	16	static
+../app/src/task_i2c_interface.c:141:6:ioctl_i2c	16	static
