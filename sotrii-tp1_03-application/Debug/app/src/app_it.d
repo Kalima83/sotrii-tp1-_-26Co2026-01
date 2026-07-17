@@ -30,7 +30,8 @@ app/src/app_it.o: ../app/src/app_it.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../app/inc/logger.h ../app/inc/dwt.h ../app/inc/board.h
+ ../app/inc/logger.h ../app/inc/dwt.h ../app/inc/board.h \
+ ../app/inc/app_it.h ../app/inc/task_adc_interface.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -66,3 +67,5 @@ app/src/app_it.o: ../app/src/app_it.c ../Core/Inc/main.h \
 ../app/inc/logger.h:
 ../app/inc/dwt.h:
 ../app/inc/board.h:
+../app/inc/app_it.h:
+../app/inc/task_adc_interface.h:

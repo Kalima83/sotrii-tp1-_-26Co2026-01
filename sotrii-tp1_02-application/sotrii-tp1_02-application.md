@@ -77,3 +77,23 @@ Centraliza las funciones callback del núcleo de FreeRTOS para el diagnóstico d
 | **`Task UART Tx`** | `task_uart.c` | `1` | Realiza toggle de un LED, mide tiempos de ejecución de transmisión y espera 250 ms. |
 | **`Task UART Rx`** | `task_uart.c` | `1` | Mide tiempos de ejecución de recepción de hardware y espera 250 ms. |
 | **`Idle Task`** | Núcleo RTOS | `0` | Corre cuando el sistema no tiene trabajo activo; mide carga de CPU. |
+
+# Informe final
+
+## paso 6: Gestión de Periférico UART (Asynchronous - Interrupt)
+
+### 1. Comportamiento Observado
+Se implementó con éxito el patrón de diseño **Asynchronous** mediante la utilización de colas de mensajes de FreeRTOS (`Queue`) de almacenamiento estático/dinámico. Las tareas de la aplicación (`Task Sender` y `Task Receiver`) quedaron completamente desacopladas de la gestión física del hardware. 
+
+La tarea consumidora no realiza esperas activas; en su lugar, cede el control del procesador mediante bloqueos temporales (`vTaskDelay` / `xQueueReceive` con Timeout de 100ms), pasando al estado *Blocked* de forma eficiente cuando el bus está inactivo.
+
+### 2. Mediciones de tiempo (WCET de la interfaz de bajo nivel)
+Utilizando el contador de ciclos por hardware (DWT), se midió el tiempo de peor caso de ejecución (WCET) requerido por la CPU para interactuar con las APIs de la HAL de STM32 en modo interrupción:
+
+*   **WCET Transmisión (`task_uart_tx` -> HAL_UART_Transmit_IT):** < 1 µs  
+    *(La CPU solo escribe los registros de control e inicia la IT, delegando el envío físico al hardware).*
+*   **WCET Recepción (`task_uart_rx` -> HAL_UART_Receive_IT):** 1 µs  
+    *(La CPU reconfigura instantáneamente el registro de recepción para el siguiente byte).*
+
+### 3. Conclusión Técnica
+La arquitectura **Asynchronous + Interrupt** reduce drásticamente el WCET en comparación con los esquemas de polling síncronos. Al liberar a la CPU de las esperas de tiempo de transmisión física de los caracteres, el procesador queda disponible inmediatamente para ejecutar tareas concurrentes del sistema operativo de tiempo real.

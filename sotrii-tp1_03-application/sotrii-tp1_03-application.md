@@ -11,7 +11,7 @@ El firmware está diseñado bajo el patrón de arquitectura por capas con un enf
 Las tareas de la capa superior de aplicación (`task_receiver`, o potenciales tareas consumidoras) interactúan de manera exclusiva con el **middleware de interfaz** (`task_adc_interface`). Esta interfaz abstrae las complejidades del periférico y se comunica con la tarea de bajo nivel (`task_adc`) encargada de coordinar los muestreos físicos, el disparo de conversiones y el procesamiento temporal.
 
 
-```
+``` text
 +-------------------------------------------------------+
 |                 CAPA DE APLICACIÓN                    |
 |                [task_receiver.c]                      |
@@ -88,3 +88,49 @@ Centraliza las rutinas de monitoreo y seguridad incorporadas dentro del propio p
 5. Los datos quedan disponibles para ser leídos por la capa de aplicación superior mediante las funciones controladas **`read_adc()`** expuestas por el driver.
 
 ```
+## 4. Mediciones de Tiempo de Ejecución (WCET) y Comportamiento Dinámico
+
+Se analizó el comportamiento dinámico del driver ADC implementado bajo el patrón **Latest Input Only** asistido por DMA en una plataforma STM32F446RE. Utilizando el bloque periférico **DWT (Data Watchpoint and Trace)** del núcleo ARM Cortex-M4, se capturaron de manera empírica los tiempos del peor caso de ejecución (WCET).
+
+### 4.1. Valores Obtenidos en Laboratorio
+
+| Componente Medido | Variable en Código | Ciclos de CPU (WCET) | Tiempo Estimado ($\mu s$) |
+| :--- | :--- | :--- | :--- |
+| **Función de Interfaz (`read_adc`)** | `g_task_adc_read_runtime_cycles` / `_us` | 22 | 0 |
+| **Callback de Interrupción (ISR DMA)** | `g_task_adc_dma_callback_runtime_cycles` / `_us` | 28 | 0 |
+
+### 4.2. Análisis del Comportamiento Observado
+
+* **Comportamiento de `read_adc` (Capa de Aplicación):** 
+  Al ejecutarse bajo el patrón *Latest Input Only* con DMA circular, la función de interfaz `read_adc` posee un WCET extremadamente bajo de apenas **22 ciclos de CPU**. Esto se debe a que la función no bloquea la tarea ni inicia una conversión por software; simplemente actúa como un pasamanos reglamentario de la arquitectura, permitiendo que la tarea consuma el valor de la variable global asíncrona de manera inmediata.
+  
+* **Comportamiento de `HAL_ADC_ConvCpltCallback` (Capa de Hardware/ISR):**
+  La rutina de servicio de interrupción registró un WCET de **28 ciclos de CPU**. Al estar configurado el DMA en modo Circular, el contador de callbacks (`hal_xxxx_callback_cnt`) se estabiliza rápidamente ya que el controlador transfiere los datos a la memoria RAM de forma autónoma en background. El tiempo medido en ciclos representa el costo real de guardar de manera segura la última muestra válida en `g_adc_latest_value` (950 en las pruebas de laboratorio).
+  
+* **Resolución Temporal en Microsegundos:**
+  Debido a la elevada frecuencia de reloj del procesador, ambas operaciones toman una fracción de microsegundo (aprox. $0.12 - 0.15\text{ }\mu\text{s}$). Como consecuencia, las variables de diagnóstico calculadas por división entera (`_runtime_us`) truncan su valor a **0**, demostrando que el impacto o *overhead* del driver sobre el procesador es despreciable y óptimo para las restricciones de tiempo real del sistema.
+
+# Informe final
+  
+## Paso 6: Mediciones de Tiempo de Ejecución (WCET) y Comportamiento Dinámico
+
+Se analizó el comportamiento dinámico del driver ADC implementado bajo el patrón **Latest Input Only** asistido por DMA en una plataforma STM32F446RE. Utilizando el bloque periférico **DWT (Data Watchpoint and Trace)** del núcleo ARM Cortex-M4, se capturaron de manera empírica los tiempos del peor caso de ejecución (WCET).
+
+### 1. Valores Obtenidos en Laboratorio
+
+| Componente Medido | Variable en Código | Ciclos de CPU (WCET) | Tiempo Estimado ($\mu s$) |
+| :--- | :--- | :--- | :--- |
+| **Función de Interfaz (`read_adc`)** | `g_task_adc_read_runtime_cycles` / `_us` | 22 | 0 |
+| **Callback de Interrupción (ISR DMA)** | `g_task_adc_dma_callback_runtime_cycles` / `_us` | 28 | 0 |
+
+### 2. Análisis del Comportamiento Observado
+
+* **Comportamiento de `read_adc` (Capa de Aplicación):** 
+  Al ejecutarse bajo el patrón *Latest Input Only* con DMA circular, la función de interfaz `read_adc` posee un WCET extremadamente bajo de apenas **22 ciclos de CPU**. Esto se debe a que la función no bloquea la tarea ni inicia una conversión por software; simplemente actúa como un pasamanos reglamentario de la arquitectura, permitiendo que la tarea consuma el valor de la variable global asíncrona de manera inmediata.
+  
+* **Comportamiento de `HAL_ADC_ConvCpltCallback` (Capa de Hardware/ISR):**
+  La rutina de servicio de interrupción registró un WCET de **28 ciclos de CPU**. Al estar configurado el DMA en modo Circular, el contador de callbacks (`hal_xxxx_callback_cnt`) se estabiliza rápidamente ya que el controlador transfiere los datos a la memoria RAM de forma autónoma en background. El tiempo medido en ciclos representa el costo real de guardar de manera segura la última muestra válida en `g_adc_latest_value` (950 en las pruebas de laboratorio).
+  
+* **Resolución Temporal en Microsegundos:**
+  Debido a la elevada frecuencia de reloj del procesador, ambas operaciones toman una fracción de microsegundo (aprox. $0.12 - 0.15\text{ }\mu\text{s}$). Como consecuencia, las variables de diagnóstico calculadas por división entera (`_runtime_us`) truncan su valor a **0**, demostrando que el impacto o *overhead* del driver sobre el procesador es despreciable y óptimo para las restricciones de tiempo real del sistema.
+  

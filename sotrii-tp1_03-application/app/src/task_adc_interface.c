@@ -50,8 +50,7 @@
 #include "task_adc_interface.h"
 
 /********************** macros and definitions *******************************/
-
-/********************** internal data declaration ****************************/
+#define ADC_BUFFER_SIZE  1ul
 
 /********************** internal data declaration ****************************/
 
@@ -59,20 +58,25 @@
 
 /********************** internal data definition *****************************/
 
-/********************** external data declaration ****************************/
+/********************** external data definition ****************************/
+/* Buffer plano donde el DMA depositará la conversión de hardware */
+uint32_t g_adc_buffer_dma[ADC_BUFFER_SIZE];
+
+/* Variable global que almacena el último valor convertido (Latest Input Only) */
+volatile uint16_t g_adc_latest_value = 0U;
 
 /********************** external functions definition ************************/
 /* Interface functions */
 void open_adc(ADC_HandleTypeDef *h_adc_device)
 {
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_adc_device);
+    /* Inicia el ADC en modo DMA circular usando nuestro buffer global plano */
+    HAL_ADC_Start_DMA(h_adc_device, (uint32_t*)g_adc_buffer_dma, ADC_BUFFER_SIZE);
 }
 
 void release_adc(ADC_HandleTypeDef *h_adc_device)
 {
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_adc_device);
+    /* Detiene el DMA al liberar el periférico */
+    HAL_ADC_Stop_DMA(h_adc_device);
 }
 
 void write_adc(ADC_HandleTypeDef *h_adc_device)
@@ -83,7 +87,7 @@ void write_adc(ADC_HandleTypeDef *h_adc_device)
 
 void read_adc(ADC_HandleTypeDef *h_adc_device)
 {
-	/* Prevent unused argument(s) compilation warning */
+    /* llama a read_adc antes de consumir */
 	UNUSED(h_adc_device);
 }
 

@@ -48,7 +48,8 @@ app/src/task_adc.o: ../app/src/task_adc.c ../Core/Inc/main.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
  ../app/inc/logger.h ../app/inc/dwt.h ../app/inc/board.h ../app/inc/app.h \
- ../app/inc/app_it.h ../app/inc/task_adc_attribute.h
+ ../app/inc/app_it.h ../app/inc/task_adc_attribute.h \
+ ../app/inc/task_adc_interface.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -104,3 +105,4 @@ app/src/task_adc.o: ../app/src/task_adc.c ../Core/Inc/main.h \
 ../app/inc/app.h:
 ../app/inc/app_it.h:
 ../app/inc/task_adc_attribute.h:
+../app/inc/task_adc_interface.h:
