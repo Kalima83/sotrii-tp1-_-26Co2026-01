@@ -54,7 +54,6 @@
 #define TASK_XXXX_DEL_ZERO	(pdMS_TO_TICKS(0ul))
 #define TASK_XXXX_DEL_MAX	(pdMS_TO_TICKS(250ul))
 
-/********************** internal data declaration ****************************/
 
 /********************** internal data declaration ****************************/
 
@@ -63,8 +62,6 @@ void task_uart_tx(void *parameters);
 void task_uart_rx(void *parameters);
 
 /********************** internal data definition *****************************/
-const char *p_task_uart_tx_wait_250mS	= "   ==> Task UART TX - Wait:   250mS";
-const char *p_task_uart_rx_wait_250mS	= "   ==> Task UART RX - Wait:   250mS";
 
 /********************** external data declaration ****************************/
 uint32_t g_task_xxxx_tx_cnt;
@@ -73,68 +70,104 @@ uint32_t g_task_xxxx_tx_runtime_us;
 uint32_t g_task_xxxx_rx_cnt;
 uint32_t g_task_xxxx_rx_runtime_us;
 
+uint32_t g_task_xxxx_tx_runtime_cycles;
+uint32_t g_task_xxxx_rx_runtime_cycles;
+
 /********************** external functions definition ************************/
-/* Task UART TX thread */
+
+/* Task UART TX thread (Gatekeeper de Transmisión) */
 void task_uart_tx(void *parameters)
 {
 	/* Prevent unused argument(s) compilation warning */
 	UNUSED(parameters);
 
-	/*  Declare & Initialize Task Function variables */
+	uint8_t tx_data_byte = 0;
+
+	/* Initialize Task Function variables */
 	g_task_xxxx_tx_cnt = G_TASK_XXXX_CNT_INI;
 	g_task_xxxx_tx_runtime_us = G_TASK_XXXX_RUNTIME_US_INI;
+	g_task_xxxx_tx_runtime_cycles = 0ul;
 
 	/* Print out: Task Initialized */
 	LOGGER_INFO(" ");
 	LOGGER_INFO("%s is running - Tick [mS] = %3d", pcTaskGetName(NULL), (int)xTaskGetTickCount());
 
-	/* As per most tasks, this task is implemented in an infinite loop. */
 	for (;;)
 	{
-		/* Update Task Counter */
-		g_task_xxxx_tx_cnt++;
+		/* Bloqueo eterno hasta que un productor meta un byte en la cola de Tx */
+		if (xQueueReceive(g_uart_driver.device_tx_queue, &tx_data_byte, portMAX_DELAY) == pdTRUE)
+		{
+			g_task_xxxx_tx_cnt++;
 
-		cycle_counter_reset();
+			/* Reset y medición del WCET que le toma a la CPU configurar la IT */
+			cycle_counter_reset();
 
-		HAL_GPIO_TogglePin(LED_A_PORT, LED_A_PIN);
+			HAL_GPIO_TogglePin(LED_A_PORT, LED_A_PIN);
 
-		g_task_xxxx_tx_runtime_us = cycle_counter_get_time_us();
+			/* Iniciamos la transmisión física por hardware mediante Interrupciones */
+			if (HAL_UART_Transmit_IT(g_uart_driver.h_uart, &tx_data_byte, 1ul) == HAL_OK)
+			{
+				/* Captura directa de ciclos de clock puros de la CPU */
+				g_task_xxxx_tx_runtime_cycles = DWT->CYCCNT;
+				g_task_xxxx_tx_runtime_us = cycle_counter_get_time_us();
 
-    	/* Print out: Wait 250mS */
-		LOGGER_INFO(p_task_uart_tx_wait_250mS);
-		vTaskDelay(TASK_XXXX_DEL_MAX);
+				/* Bloqueamos el Gatekeeper de Tx liberando CPU. La ISR se encargará de despertarlo */
+				xSemaphoreTake(g_uart_driver.tx_sem, portMAX_DELAY);
+			}
+			else
+			{
+				/* Resguardo ante errores de bus por hardware */
+				g_task_xxxx_tx_runtime_cycles = DWT->CYCCNT;
+				g_task_xxxx_tx_runtime_us = cycle_counter_get_time_us();
+			}
+		}
 	}
 }
 
-/* Task UART RX thread */
+/* Task UART RX thread (Gatekeeper de Recepción) */
 void task_uart_rx(void *parameters)
 {
 	/* Prevent unused argument(s) compilation warning */
 	UNUSED(parameters);
 
-	/*  Declare & Initialize Task Function variables */
+	uint8_t rx_data_byte = 0;
+
+	/* Initialize Task Function variables */
 	g_task_xxxx_rx_cnt = G_TASK_XXXX_CNT_INI;
 	g_task_xxxx_rx_runtime_us = G_TASK_XXXX_RUNTIME_US_INI;
+	g_task_xxxx_rx_runtime_cycles = 0ul;
 
 	/* Print out: Task Initialized */
 	LOGGER_INFO(" ");
 	LOGGER_INFO("%s is running - Tick [mS] = %3d", pcTaskGetName(NULL), (int)xTaskGetTickCount());
 
-	/* As per most tasks, this task is implemented in an infinite loop. */
 	for (;;)
 	{
-		/* Update Task Counter */
 		g_task_xxxx_rx_cnt++;
 
+		/* Reset y medición del WCET de configuración de escucha por IT */
 		cycle_counter_reset();
 
-		HAL_GPIO_TogglePin(LED_A_PORT, LED_A_PIN);
+		/* Le ordena a la HAL que prepare los registros para recibir 1 byte de forma asíncrona */
+		if (HAL_UART_Receive_IT(g_uart_driver.h_uart, &rx_data_byte, 1ul) == HAL_OK)
+		{
+			/* Captura directa de ciclos de clock puros de la CPU */
+			g_task_xxxx_rx_runtime_cycles = DWT->CYCCNT;
+			g_task_xxxx_rx_runtime_us = cycle_counter_get_time_us();
 
-		g_task_xxxx_rx_runtime_us = cycle_counter_get_time_us();
+			/* Pone a dormir el Gatekeeper de Rx. Despertará al completarse la captura por hardware */
+			xSemaphoreTake(g_uart_driver.rx_sem, portMAX_DELAY);
 
-    	/* Print out: Wait 250mS */
-		LOGGER_INFO(p_task_uart_rx_wait_250mS);
-		vTaskDelay(TASK_XXXX_DEL_MAX);
+			/* Al despertar, envia inmediatamente el byte de forma asíncrona a la capa superior */
+			xQueueSend(g_uart_driver.device_rx_queue, &rx_data_byte, TASK_XXXX_DEL_ZERO);
+		}
+		else
+		{
+			g_task_xxxx_rx_runtime_cycles = DWT->CYCCNT;
+			g_task_xxxx_rx_runtime_us = cycle_counter_get_time_us();
+			/* Espera en caso de error de sobreescritura (Overrun) en el registro del hardware */
+			vTaskDelay(pdMS_TO_TICKS(1ul));
+		}
 	}
 }
 

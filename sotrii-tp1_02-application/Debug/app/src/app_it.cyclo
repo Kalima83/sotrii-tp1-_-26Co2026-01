@@ -1,3 +1,4 @@
-../app/src/app_it.c:62:6:app_it_init	1
-../app/src/app_it.c:81:6:HAL_GPIO_EXTI_Callback	1
-../app/src/app_it.c:96:6:HAL_UART_TxCpltCallback	2
+../app/src/app_it.c:63:6:app_it_init	1
+../app/src/app_it.c:80:6:HAL_GPIO_EXTI_Callback	1
+../app/src/app_it.c:95:6:HAL_UART_TxCpltCallback	4
+../app/src/app_it.c:122:6:HAL_UART_RxCpltCallback	4

@@ -68,15 +68,16 @@ uint32_t volatile g_app_tick_cnt;
 uint32_t g_task_idle_cnt;
 uint32_t g_app_stack_overflow_cnt;
 
-/* Declare a variable of type QueueHandle_t. This is used to reference queues*/
-
-/* Declare a variable of type SemaphoreHandle_t (binary or counting) or mutex.
- * This is used to reference the semaphore that is used to synchronize a thread
- * with other thread or to ensure mutual exclusive access to...*/
+/* Variable externa del hardware UART definida en main.c */
+extern UART_HandleTypeDef huart2;
 
 /* Declare a variable of type TaskHandle_t. This is used to reference threads. */
 TaskHandle_t h_task_sender;
 TaskHandle_t h_task_receiver;
+
+/* Manejadores para las dos nuevas tareas Gatekeeper del Device Driver */
+TaskHandle_t h_task_uart_tx;
+TaskHandle_t h_task_uart_rx;
 
 /********************** external functions definition ************************/
 void app_init(void)
@@ -93,20 +94,6 @@ void app_init(void)
 	LOGGER_INFO(" %s is a %s", GET_NAME(app), p_app);
 	LOGGER_INFO(" %s is a %s", GET_NAME(app), p_app_);
 	LOGGER_INFO(" %s is a %s", GET_NAME(app), p_app__);
-
-    /* Before a queue or semaphore (binary or counting) or mutex is used it must 
-     * be explicitly created.
-	 *
-	 * Check the queue or semaphore (binary or counting) or mutex was created
-     * successfully.
-     *
-     * Add queue or semaphore (binary or counting) or mutex to registry. */
-
-	/* The queue is created to hold a maximum of 5 task_led_ev_t values. */
-
-	/* The semaphore is created in the 'empty' state, meaning the semaphore
-	 * must first be given using the xSemaphoreGive() API function before it can
-	 * subsequently be taken (obtained) using the xSemaphoreTake() function */
 
 	/* Add threads, ... */
     BaseType_t ret;
@@ -133,17 +120,30 @@ void app_init(void)
     /* Check the thread was created successfully. */
     configASSERT(pdPASS == ret);
 
-    /* Total amount of heap space that remains unallocated. Is also available
-     * with xFreeBytesRemaining variable for heap management schemes 2 to 5.
-     * Memory array used by heap_4 is specified as:
-     * uint8_t ucHeap[configTOTAL_HEAP_SIZE]; */
+    /* --- INSTANCIACIÓN DE LOS GATEKEEPERS DEL DRIVER --- */
+
+    /* Task UART TX Gatekeeper thread at priority 1 */
+    ret = xTaskCreate(task_uart_tx,
+					  "Task UART TX",
+					  (2 * configMINIMAL_STACK_SIZE),
+					  NULL,
+					  (tskIDLE_PRIORITY + 1ul),
+					  &h_task_uart_tx);
+    configASSERT(pdPASS == ret);
+
+    /* Task UART RX Gatekeeper thread at priority 1 */
+    ret = xTaskCreate(task_uart_rx,
+					  "Task UART RX",
+					  (2 * configMINIMAL_STACK_SIZE),
+					  NULL,
+					  (tskIDLE_PRIORITY + 1ul),
+					  &h_task_uart_rx);
+    configASSERT(pdPASS == ret);
+
+    /* Total amount of heap space that remains unallocated. */
     ret = xPortGetFreeHeapSize();
 
-    /* There is no dedicated list for task in Running mode (as we have only
-     * one task in this state at the moment), but the currently run task ID
-     * is stored in variable pxCurrentTCB */
-
-    /* UART Device Diver Init */
+    /* UART Device Driver Init (Crea las colas y semáforos requeridos) */
     open_uart(&huart2);
 
     /* Application Interrupts Init */
