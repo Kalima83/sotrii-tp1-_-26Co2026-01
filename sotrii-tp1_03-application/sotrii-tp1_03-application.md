@@ -1,25 +1,3 @@
-Analizar y explicar (en español), el funcionamiento del código fuente contenido en los archivos adjuntos: app.c , app_it.c , task_receiver.c , task_adc.c , task_adc_interface.c , task_adc_interface.h y freertos.c .
-
-+-------------------------------------------------------+
-|                 CAPA DE APLICACIÓN                    |
-|                [task_receiver.c]                      |
-+-----------------------+-------------------------------+
-| (read_adc / ioctl_adc)
-v
-+-------------------------------------------------------+
-|            INTERFAZ / MIDDLEWARE (DRIVER)             |
-|              [task_adc_interface.c/.h]                |
-+-----------------------+-------------------------------+
-|
-v
-+-------------------------------------------------------+
-|                 CAPA DE BAJO NIVEL                    |
-|                    [task_adc.c]                       |
-+-------------------------------------------------------+
-
-¡Mil disculpas! Se cortó la respuesta justo cuando empezaba a desglosar los archivos. Aquí tienes el análisis completo (incluyendo los puntos 2, 3 y 4) formateado en **Markdown crudo**, listo para copiar y pegar directamente en tu `README.md`:
-
-```markdown
 # Análisis de Arquitectura del Firmware (FreeRTOS - ADC)
 
 Este sistema implementa una arquitectura basada en el sistema operativo en tiempo real **FreeRTOS** (utilizando la abstracción CMSIS-OS) y las bibliotecas HAL de STMicroelectronics para microcontroladores STM32. El diseño aplica el desacoplamiento de capas mediante una interfaz abstracta para interactuar con el convertidor analógico-digital (**ADC**) de forma asíncrona, optimizando la eficiencia de la CPU.
@@ -34,7 +12,6 @@ Las tareas de la capa superior de aplicación (`task_receiver`, o potenciales ta
 
 
 ```
-
 +-------------------------------------------------------+
 |                 CAPA DE APLICACIÓN                    |
 |                [task_receiver.c]                      |

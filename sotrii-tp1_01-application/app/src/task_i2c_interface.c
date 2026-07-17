@@ -70,10 +70,13 @@ void open_i2c(I2C_HandleTypeDef *h_i2c_device)
 	task_i2c_dta_t *p_task_i2c_dta = &task_i2c_dta;
 
 	p_task_i2c_dta->device_id = h_i2c_device;
+    p_task_i2c_dta->bus_mode = I2C_BUS_MODE_POLLING; // Modo inicial por defecto
 
-    /* Before a queue is used it must be explicitly created.
-	 * Check the queue was created successfully.
-     * Add queue to registry. */
+    // Crea el semáforo binario de sincronización para hardware
+    p_task_i2c_dta->hal_sem = xSemaphoreCreateBinary();
+    configASSERT(NULL != p_task_i2c_dta->hal_sem);
+
+    /* Crea de colas originales */
 	p_task_i2c_dta->queue_tx = xQueueCreate(5, sizeof(task_i2c_tx_dta_t));
 	configASSERT(NULL != p_task_i2c_dta->queue_tx);
 	vQueueAddToRegistry(p_task_i2c_dta->queue_tx, "Task I2C Tx Queue Handle");
@@ -82,8 +85,7 @@ void open_i2c(I2C_HandleTypeDef *h_i2c_device)
 	configASSERT(NULL != p_task_i2c_dta->queue_rx);
 	vQueueAddToRegistry(p_task_i2c_dta->queue_rx, "Task I2C Rx Queue Handle");
 
-    /* Before a task is executed it must be explicitly created.
-	 * Check the task was created successfully. */
+    /* Crea de tareas originales */
     ret = xTaskCreate(task_i2c_tx, "Task I2C Tx", (configMINIMAL_STACK_SIZE),
 					  (void *)p_task_i2c_dta,
 					  (tskIDLE_PRIORITY + 1ul), &p_task_i2c_dta->task_tx);
@@ -95,23 +97,15 @@ void open_i2c(I2C_HandleTypeDef *h_i2c_device)
     configASSERT(pdPASS == ret);
 }
 
-void release_i2c(I2C_HandleTypeDef *h_i2c_device)
+void ioctl_i2c(I2C_HandleTypeDef *h_i2c_device)
 {
-	task_i2c_dta_t *p_task_i2c_dta = &task_i2c_dta;
+    // Modifica dinámicamente el modo del bus pasando el enumerado casteado
+    // Ejemplo de uso externo: ioctl_i2c((I2C_HandleTypeDef *)I2C_BUS_MODE_DMA);
+    task_i2c_dta_t *p_task_i2c_dta = &task_i2c_dta;
 
-	p_task_i2c_dta->device_id = h_i2c_device;
-
-	// Check which version of the i2c triggered this function
-	if (p_task_i2c_dta->device_id == h_i2c_device)
-	{
-	    vQueueUnregisterQueue(p_task_i2c_dta->queue_tx);
-		vQueueDelete(p_task_i2c_dta->queue_tx);
-	    vQueueUnregisterQueue(p_task_i2c_dta->queue_rx);
-		vQueueDelete(p_task_i2c_dta->queue_rx);
-
-		vTaskDelete(p_task_i2c_dta->task_tx);
-		vTaskDelete(p_task_i2c_dta->task_rx);
-	}
+    if (p_task_i2c_dta->device_id == h_i2c_device || h_i2c_device != NULL) {
+        p_task_i2c_dta->bus_mode = (i2c_bus_mode_t)h_i2c_device;
+    }
 }
 
 void write_i2c(I2C_HandleTypeDef *h_i2c_device, uint16_t dev_address, uint8_t dev_data)
@@ -124,7 +118,6 @@ void write_i2c(I2C_HandleTypeDef *h_i2c_device, uint16_t dev_address, uint8_t de
 	if (p_task_i2c_dta->device_id == h_i2c_device)
 	{
 		task_i2c_tx_dta_t task_i2c_tx_dta;
-
 		task_i2c_tx_dta.address = dev_address;
 		task_i2c_tx_dta.data = dev_data;
 
@@ -134,14 +127,20 @@ void write_i2c(I2C_HandleTypeDef *h_i2c_device, uint16_t dev_address, uint8_t de
 
 void read_i2c(I2C_HandleTypeDef *h_i2c_device)
 {
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_i2c_device);
-}
+    task_i2c_dta_t *p_task_i2c_dta = &task_i2c_dta;
 
-void ioctl_i2c(I2C_HandleTypeDef *h_i2c_device)
-{
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_i2c_device);
+    // Verifica si el periférico corresponde al driver inicializado
+    if (p_task_i2c_dta->device_id == h_i2c_device)
+    {
+        uint8_t received_data;
+
+        // La tarea de aplicación se bloquea eficientemente aquí hasta que
+        // el Gatekeeper de RX reciba un byte del bus y lo ponga en la cola
+        xQueueReceive(p_task_i2c_dta->queue_rx, &received_data, portMAX_DELAY);
+
+        // Retornar o procesar el dato según la lógica de la aplicación.
+        LOGGER_INFO("   ==> API read_i2c - Dato obtenido de la cola: 0x%02X", received_data);
+    }
 }
 
 /********************** end of file ******************************************/

@@ -35,6 +35,9 @@
 /********************** inclusions *******************************************/
 /* Project includes */
 #include "main.h"
+#include "cmsis_os.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
 
 /* Demo includes */
 #include "logger.h"
@@ -42,6 +45,7 @@
 
 /* Application & Tasks includes */
 #include "board.h"
+#include "task_i2c_attribute.h" // Agregado para acceder a la estructura de control
 
 /********************** macros and definitions *******************************/
 
@@ -52,6 +56,8 @@
 /********************** internal data definition *****************************/
 
 /********************** external data declaration ****************************/
+// Importa la estructura global del driver para interactuar con el semáforo
+extern task_i2c_dta_t task_i2c_dta;
 
 /********************** external functions definition ************************/
 void app_it_init(void)
@@ -76,6 +82,46 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	{
 		/* Work to be done. */
 	}
+}
+
+/**
+  * @brief  Callback de finalización de transmisión I2C en modo No Bloqueante (IT/DMA).
+  * @param  hi2c Puntero a la estructura de la HAL del I2C que generó la interrupción.
+  * @retval None
+  */
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+    // Validamos que la interrupción provenga del periférico bajo control de nuestro driver
+    if (task_i2c_dta.device_id == hi2c)
+    {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+        // Despierta pasivamente a la tarea Gatekeeper (task_i2c_tx) liberando el semáforo
+        xSemaphoreGiveFromISR(task_i2c_dta.hal_sem, &xHigherPriorityTaskWoken);
+
+        // Si una tarea de mayor prioridad se desbloqueó, fuerza el cambio de contexto inmediato
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+}
+
+/**
+  * @brief  Callback de finalización de recepción I2C en modo No Bloqueante (IT/DMA).
+  * @param  hi2c Puntero a la estructura de la HAL del I2C que generó la interrupción.
+  * @retval None
+  */
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+    // Valida que la interrupción provenga del periférico bajo control del driver
+    if (task_i2c_dta.device_id == hi2c)
+    {
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+        // Despierta al Gatekeeper de Recepción (task_i2c_rx) liberando el semáforo
+        xSemaphoreGiveFromISR(task_i2c_dta.hal_sem, &xHigherPriorityTaskWoken);
+
+        // Fuerza el cambio de contexto si la tarea despertada es de mayor prioridad
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }
 
 /********************** end of file ******************************************/

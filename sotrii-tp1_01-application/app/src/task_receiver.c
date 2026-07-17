@@ -79,6 +79,10 @@ void task_receiver(void *parameters)
 		/* Update Task Counter */
 		g_task_receiver_cnt++;
 
+		/* I2C Device Driver Read */
+		// Invoca el flujo de lectura unificado sobre el periférico asignado
+		read_i2c(&hi2c1);
+
     	/* Print out: Wait 250mS */
 		LOGGER_INFO(p_task_receiver_wait_250mS);
 		vTaskDelay(TASK_RECEIVER_DEL_MAX);

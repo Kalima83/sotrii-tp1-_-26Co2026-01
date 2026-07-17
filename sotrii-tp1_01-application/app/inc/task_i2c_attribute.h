@@ -41,11 +41,24 @@ extern "C" {
 #endif
 
 /********************** inclusions *******************************************/
+#include "cmsis_os.h" // incluye de forma nativa a FreeRTOS.h, task.h, queue.h y semphr.h
 
 /********************** macros ***********************************************/
 
 /********************** typedef **********************************************/
-/* Structure of Task */
+/* Estructura agregada para control de modos */
+typedef enum {
+    I2C_BUS_MODE_POLLING = 0,
+    I2C_BUS_MODE_INTERRUPT,
+    I2C_BUS_MODE_DMA
+} i2c_bus_mode_t;
+
+typedef struct {
+    uint8_t address;  // Dirección del dispositivo esclavo
+    uint8_t data;     // Dato a transmitir
+} task_i2c_tx_dta_t;
+
+/* Estructura extendida con control de sincronismo y modo */
 typedef struct
 {
 	I2C_HandleTypeDef * device_id;
@@ -55,14 +68,11 @@ typedef struct
 
 	TaskHandle_t		task_rx;
 	QueueHandle_t		queue_rx;
-} task_i2c_dta_t;
 
-/* Structure of I2C Tx */
-typedef struct
-{
-	uint16_t	address;
-	uint8_t		data;
-} task_i2c_tx_dta_t;
+    // Campos añadidos para el Paso 06 actividad 1
+    SemaphoreHandle_t   hal_sem;     // Sincroniza la ISR con el Gatekeeper
+    i2c_bus_mode_t      bus_mode;    // Modo operativo dinámico
+} task_i2c_dta_t;
 
 /********************** external data declaration ****************************/
 

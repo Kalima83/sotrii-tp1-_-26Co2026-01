@@ -47,7 +47,8 @@ app/src/task_i2c.o: ../app/src/task_i2c.c ../Core/Inc/main.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups.h \
  ../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h \
  ../app/inc/logger.h ../app/inc/dwt.h ../app/inc/board.h ../app/inc/app.h \
- ../app/inc/app_it.h ../app/inc/task_i2c_attribute.h
+ ../app/inc/app_it.h ../app/inc/task_i2c_attribute.h \
+ ../app/inc/task_i2c_interface.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -102,3 +103,4 @@ app/src/task_i2c.o: ../app/src/task_i2c.c ../Core/Inc/main.h \
 ../app/inc/app.h:
 ../app/inc/app_it.h:
 ../app/inc/task_i2c_attribute.h:
+../app/inc/task_i2c_interface.h:

@@ -1,2 +1,4 @@
-../app/src/app_it.c:57:6:app_it_init	1
-../app/src/app_it.c:72:6:HAL_GPIO_EXTI_Callback	1
+../app/src/app_it.c:63:6:app_it_init	1
+../app/src/app_it.c:78:6:HAL_GPIO_EXTI_Callback	1
+../app/src/app_it.c:92:6:HAL_I2C_MasterTxCpltCallback	3
+../app/src/app_it.c:112:6:HAL_I2C_MasterRxCpltCallback	3

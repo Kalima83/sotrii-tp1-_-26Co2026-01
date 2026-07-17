@@ -1,2 +1,2 @@
-../app/src/task_i2c.c:78:6:task_i2c_tx	1
-../app/src/task_i2c.c:119:6:task_i2c_rx	1
+../app/src/task_i2c.c:79:6:task_i2c_tx	5
+../app/src/task_i2c.c:124:6:task_i2c_rx	5
