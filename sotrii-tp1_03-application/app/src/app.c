@@ -2,33 +2,6 @@
  * Copyright (c) 2026 Juan Manuel Cruz <jcruz@fi.uba.ar> <jcruz@frba.utn.edu.ar>.
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- *
- * 3. Neither the name of the copyright holder nor the names of its
- *    contributors may be used to endorse or promote products derived from
- *    this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
- * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
  * @author : Juan Manuel Cruz <jcruz@fi.uba.ar> <jcruz@frba.utn.edu.ar>
  */
 
@@ -56,6 +29,7 @@
 /********************** internal data declaration ****************************/
 
 /********************** internal functions declaration ***********************/
+void task_adc_rx(void *parameters);
 
 /********************** internal data definition *****************************/
 const char *p_app	= "RTOS - Event-Triggered Systems (ETS)";
@@ -67,17 +41,13 @@ uint32_t volatile g_app_tick_cnt;
 uint32_t g_task_idle_cnt;
 uint32_t g_app_stack_overflow_cnt;
 
-/* Declare a variable of type QueueHandle_t. This is used to reference queues*/
-
-/* Declare a variable of type SemaphoreHandle_t (binary or counting) or mutex.
- * This is used to reference the semaphore that is used to synchronize a thread
- * with other thread or to ensure mutual exclusive access to...*/
-
-/* Declare a variable of type TaskHandle_t. This is used to reference threads. */
-TaskHandle_t h_task_sender;
+/* Handles para el control y referenciación de los hilos del sistema */
 TaskHandle_t h_task_receiver;
+TaskHandle_t h_task_adc_rx;
 
 /********************** external functions definition ************************/
+void task_adc_rx(void *parameters);
+
 void app_init(void)
 {
 	/*  Declare & Initialize App variables */
@@ -93,51 +63,36 @@ void app_init(void)
 	LOGGER_INFO(" %s is a %s", GET_NAME(app), p_app_);
 	LOGGER_INFO(" %s is a %s", GET_NAME(app), p_app__);
 
-    /* Before a queue or semaphore (binary or counting) or mutex is used it must 
-     * be explicitly created.
-	 *
-	 * Check the queue or semaphore (binary or counting) or mutex was created
-     * successfully.
-     *
-     * Add queue or semaphore (binary or counting) or mutex to registry. */
+	BaseType_t ret;
 
-	/* The queue is created to hold a maximum of 5 task_led_ev_t values. */
+	/* 1. Creación de la Tarea Consumidora (Capa Superior) a prioridad 1 */
+	ret = xTaskCreate(task_receiver,					/* Puntero a la función de la tarea */
+					  "Task Receiver",					/* Nombre simbólico descriptivo */
+					  (2 * configMINIMAL_STACK_SIZE),	/* Tamaño de la pila asignada */
+					  NULL,								/* Parámetros de entrada */
+					  (tskIDLE_PRIORITY + 1ul),			/* Prioridad 1 */
+					  &h_task_receiver);				/* Handle asociado */
+	configASSERT(pdPASS == ret);
 
-	/* The semaphore is created in the 'empty' state, meaning the semaphore
-	 * must first be given using the xSemaphoreGive() API function before it can
-	 * subsequently be taken (obtained) using the xSemaphoreTake() function */
+	/* 2. Creación de la Tarea Gestora del ADC de Bajo Nivel a prioridad 1 */
+	ret = xTaskCreate(task_adc_rx,
+					  "Task ADC RX",
+					  (2 * configMINIMAL_STACK_SIZE),
+					  NULL,
+					  (tskIDLE_PRIORITY + 1ul),
+					  &h_task_adc_rx);
+	configASSERT(pdPASS == ret);
 
-	/* Add threads, ... */
-    BaseType_t ret;
+	/* Solicitamos tamaño remanente del Heap para diagnóstico */
+	ret = xPortGetFreeHeapSize();
 
-    /* Task Receiver thread at priority 1 */
-    ret = xTaskCreate(task_receiver,					/* Pointer to the function thats implement the task. */
-					  "Task Receiver",					/* Text name for the task. This is to facilitate debugging only. */
-					  (2 * configMINIMAL_STACK_SIZE),	/* Stack depth in words. */
-					  NULL,								/* We are not using the task parameter. */
-					  (tskIDLE_PRIORITY + 1ul),			/* This task will run at priority 1. */
-					  &h_task_receiver);				/* We are using a variable as task handle. */
+	/* 3. Inicialización del Device Driver ADC (Latest Input Only - DMA) */
+	open_adc(&hadc1);
 
-    /* Check the thread was created successfully. */
-    configASSERT(pdPASS == ret);
-
-    /* Total amount of heap space that remains unallocated. Is also available
-     * with xFreeBytesRemaining variable for heap management schemes 2 to 5.
-     * Memory array used by heap_4 is specified as:
-     * uint8_t ucHeap[configTOTAL_HEAP_SIZE]; */
-    ret = xPortGetFreeHeapSize();
-
-    /* There is no dedicated list for task in Running mode (as we have only
-     * one task in this state at the moment), but the currently run task ID
-     * is stored in variable pxCurrentTCB */
-
-    /* ADC Device Diver Init */
-    open_adc(&hadc1);
-
-    /* Application Interrupts Init */
+	/* 4. Inicialización de las interrupciones del sistema */
 	app_it_init();
 
-	/* Init Cycle Counter */
+	/* 5. Inicialización del contador de ciclos por Hardware */
 	cycle_counter_init();
 }
 

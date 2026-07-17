@@ -1,5 +1,5 @@
-../app/src/task_adc_interface.c:66:6:open_adc	1
-../app/src/task_adc_interface.c:72:6:release_adc	1
-../app/src/task_adc_interface.c:78:6:write_adc	1
-../app/src/task_adc_interface.c:84:6:read_adc	1
-../app/src/task_adc_interface.c:90:6:ioctl_adc	1
+../app/src/task_adc_interface.c:70:6:open_adc	1
+../app/src/task_adc_interface.c:76:6:release_adc	1
+../app/src/task_adc_interface.c:82:6:write_adc	1
+../app/src/task_adc_interface.c:88:6:read_adc	1
+../app/src/task_adc_interface.c:94:6:ioctl_adc	1
