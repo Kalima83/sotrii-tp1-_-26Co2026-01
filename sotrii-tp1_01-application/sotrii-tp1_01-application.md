@@ -13,7 +13,7 @@ un **middleware de interfaz** (`task_i2c_interface`).
 Este middleware empaqueta y encola las peticiones de transmisión en una cola de mensajes de FreeRTOS 
 (`Queue`), delegando el control físico del bus a tareas dedicadas de menor nivel (`task_i2c_tx`). 
 Esto permite maximizar la disponibilidad de la CPU mientras el periférico procesa los datos.
-
+´´´
 +-------------------------------------------------------+
 |                 CAPA DE APLICACIÓN                    |
 |   [task_sender.c]              [task_receiver.c]      |
@@ -33,6 +33,7 @@ v (xQueueReceive)              | (xQueueSend)
 |                 CAPA DE BAJO NIVEL                    |
 |                    [task_i2c.c]                       |
 +-------------------------------------------------------+
+´´´´
 
 ## 2. Análisis Detallado por Archivo
 
