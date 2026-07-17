@@ -9,7 +9,8 @@ Este sistema implementa una arquitectura basada en **FreeRTOS** (bajo la capa CM
 El sistema está estructurado jerárquicamente para evitar que las tareas de la aplicación principal bloqueen el procesador al interactuar con el hardware de comunicación. 
 
 Las tareas de la capa de aplicación (`task_sender` y `task_receiver`) interactúan de manera exclusiva con el **middleware de interfaz** (`task_uart_interface`). Este componente es el encargado de administrar el control de la comunicación delegando las tareas físicas a hilos de bajo nivel (`task_uart_tx` y `task_uart_rx`).
-
+----
+```Text
 +-------------------------------------------------------+
 |                 CAPA DE APLICACIÓN                    |
 |   [task_sender.c]              [task_receiver.c]      |
@@ -26,6 +27,7 @@ v                              |
 |                 CAPA DE BAJO NIVEL                    |
 |                    [task_uart.c]                      |
 +-------------------------------------------------------+
+```
 
 ## 2. Análisis Detallado por Archivo
 
@@ -77,3 +79,24 @@ Centraliza las funciones callback del núcleo de FreeRTOS para el diagnóstico d
 | **`Task UART Tx`** | `task_uart.c` | `1` | Realiza toggle de un LED, mide tiempos de ejecución de transmisión y espera 250 ms. |
 | **`Task UART Rx`** | `task_uart.c` | `1` | Mide tiempos de ejecución de recepción de hardware y espera 250 ms. |
 | **`Idle Task`** | Núcleo RTOS | `0` | Corre cuando el sistema no tiene trabajo activo; mide carga de CPU. |
+
+
+# Informe Final
+
+## Actividad 2: Gestión de Periférico UART (Asynchronous - Interrupt)
+
+### 1. Comportamiento Observado
+Se implementó con éxito el patrón de diseño **Asynchronous** mediante el uso de colas de mensajes de FreeRTOS (`Queue`). Las tareas de la aplicación (`Task Sender` y `Task Receiver`) quedaron completamente desacopladas de los tiempos físicos de transferencia del hardware. 
+
+La tarea consumidora no realiza esperas activas; en su lugar, cede el control del procesador mediante bloqueos controlados con un Timeout de 100 ms (`xQueueReceive`), pasando al estado *Blocked* de forma eficiente cuando el bus está inactivo y despertando por eventos.
+
+### 2. Mediciones de tiempo (WCET de la interfaz de bajo nivel)
+Utilizando el contador de ciclos por hardware (DWT), se midió el tiempo de peor caso de ejecución (WCET) requerido por la CPU para interactuar con las APIs de la HAL de STM32 en modo interrupción:
+
+*   **WCET Transmisión (`task_uart_tx` -> HAL_UART_Transmit_IT):** < 1 µs  
+    *(La CPU escribe instantáneamente los registros de control e inicia la transmisión, delegando el envío físico de los bytes al hardware).*
+*   **WCET Recepción (`task_uart_rx` -> HAL_UART_Receive_IT):** 2 µs  
+    *(Tiempo exacto medido en hardware para reconfigurar la HAL y dejar el canal preparado para la escucha asíncrona por interrupción).*
+
+### 3. Conclusión Técnica
+La arquitectura **Asynchronous + Interrupt** reduce drásticamente el WCET en comparación con los esquemas de polling síncronos. Al liberar al procesador de los tiempos muertos de transmisión física en los hilos de la aplicación, el sistema operativo de tiempo real aprovecha al máximo la CPU para ejecutar las tareas concurrentes de forma determinística.

@@ -41,17 +41,33 @@ extern "C" {
 #endif
 
 /********************** inclusions *******************************************/
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "semphr.h"
+#include "stm32f4xx_hal.h"
 
 /********************** macros ***********************************************/
 
 /********************** typedef **********************************************/
 /* Structure of Task */
-
+typedef struct {
+    UART_HandleTypeDef *h_uart;        /* Puntero al objeto de la HAL de ST (ej: &huart2) */
+    uint32_t device_id;                /* Identificador único del dispositivo */
+    QueueHandle_t device_tx_queue;     /* Cola de mensajes para Transmisión Asíncrona */
+    QueueHandle_t device_rx_queue;     /* Cola de mensajes para Recepción Asíncrona */
+    SemaphoreHandle_t tx_sem;          /* Semáforo binario para sincronizar el fin de Tx por IT */
+    SemaphoreHandle_t rx_sem;          /* Semáforo binario para sincronizar el fin de Rx por IT */
+    uint32_t ioctl_mode;               /* Modo de gestión del periférico (Polling, IT, DMA) */
+} uart_driver_t;
 
 /* Structure of UART Tx */
-
+typedef struct {
+    uint8_t data;                      /* Estructura para empaquetar datos individuales si el driver lo requiere */
+} uart_tx_msg_t;
 
 /********************** external data declaration ****************************/
+/* Declara la existencia del driver global para que la interfaz e interrupciones lo vean */
+extern uart_driver_t g_uart_driver;
 
 /********************** external functions declaration ***********************/
 

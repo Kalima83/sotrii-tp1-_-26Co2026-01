@@ -42,6 +42,7 @@
 
 /* Application & Tasks includes */
 #include "board.h"
+#include "task_uart_attribute.h"
 
 /********************** macros and definitions *******************************/
 #define HAL_XXXX_CALLBACK_CNT_INI			0ul
@@ -61,8 +62,6 @@ volatile uint32_t hal_xxxx_callback_runtime_us;
 /********************** external functions definition ************************/
 void app_it_init(void)
 {
-	/* Init to be done */
-
 	/* Protect shared resource */
 	__asm("CPSID i");	/* disable interrupts */
 
@@ -98,10 +97,43 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 	// Check which version of the uart triggered this callback
 	if (huart->Instance == USART2)
 	{
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
 		hal_xxxx_callback_flag = true;
 		hal_xxxx_callback_cnt++;
 
-		hal_xxxx_callback_runtime_us = cycle_counter_get_time_us();
+		/* Desperta al Gatekeeper de Tx de forma segura desde la ISR */
+		if (g_uart_driver.tx_sem != NULL)
+		{
+			xSemaphoreGiveFromISR(g_uart_driver.tx_sem, &xHigherPriorityTaskWoken);
+		}
+
+		/* Solicita cambio de contexto si la tarea despertada tiene mayor prioridad */
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+	}
+}
+
+/**
+  * @brief  Rx Transfer completed callbacks.
+  * @param  huart  Pointer to a UART_HandleTypeDef structure that contains
+  *                the configuration information for the specified UART module.
+  * @retval None
+  */
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	// Check which version of the uart triggered this callback
+	if (huart->Instance == USART2)
+	{
+		BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+		/* Desperta al Gatekeeper de Rx para que procese el byte entrante */
+		if (g_uart_driver.rx_sem != NULL)
+		{
+			xSemaphoreGiveFromISR(g_uart_driver.rx_sem, &xHigherPriorityTaskWoken);
+		}
+
+		/* Solicita cambio de contexto de forma inmediata */
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	}
 }
 

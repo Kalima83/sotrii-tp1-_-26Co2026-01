@@ -50,8 +50,7 @@
 #include "task_uart_interface.h"
 
 /********************** macros and definitions *******************************/
-
-/********************** internal data declaration ****************************/
+#define UART_QUEUE_LENGTH   (16ul)
 
 /********************** internal data declaration ****************************/
 
@@ -59,38 +58,71 @@
 
 /********************** internal data definition *****************************/
 
-/********************** external data declaration ****************************/
+/********************** external data definition *****************************/
+/* Estructura del Driver Global */
+uart_driver_t g_uart_driver;
 
 /********************** external functions definition ************************/
 /* Interface functions */
+
 void open_uart(UART_HandleTypeDef *h_uart_device)
 {
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_uart_device);
+    /* Asigna el periférico de hardware a la estructura de control */
+    g_uart_driver.h_uart = h_uart_device;
+    g_uart_driver.device_id = 1; /* Identificador por defecto */
+    g_uart_driver.ioctl_mode = 0; /* Modo por defecto: Interrupt */
+
+    /* Creación de Colas (Almacenamiento Dinámico en Heap al inicio) */
+    g_uart_driver.device_tx_queue = xQueueCreate(UART_QUEUE_LENGTH, sizeof(uint8_t));
+    configASSERT(g_uart_driver.device_tx_queue != NULL);
+
+    g_uart_driver.device_rx_queue = xQueueCreate(UART_QUEUE_LENGTH, sizeof(uint8_t));
+    configASSERT(g_uart_driver.device_rx_queue != NULL);
+
+    /* Creación de Semáforos Binarios para la Sincronización con las ISR */
+    g_uart_driver.tx_sem = xSemaphoreCreateBinary();
+    configASSERT(g_uart_driver.tx_sem != NULL);
+
+    g_uart_driver.rx_sem = xSemaphoreCreateBinary();
+    configASSERT(g_uart_driver.rx_sem != NULL);
+
+    LOGGER_LOG("[info] Driver UART listo (Asinc)\r\n");
 }
 
 void release_uart(UART_HandleTypeDef *h_uart_device)
 {
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_uart_device);
+    UNUSED(h_uart_device);
+
+    /* Liberación segura de recursos del OS */
+    if (g_uart_driver.device_tx_queue != NULL) vQueueDelete(g_uart_driver.device_tx_queue);
+    if (g_uart_driver.device_rx_queue != NULL) vQueueDelete(g_uart_driver.device_rx_queue);
+    if (g_uart_driver.tx_sem != NULL) vSemaphoreDelete(g_uart_driver.tx_sem);
+    if (g_uart_driver.rx_sem != NULL) vSemaphoreDelete(g_uart_driver.rx_sem);
 }
 
-void write_uart(UART_HandleTypeDef *h_uart_device)
+BaseType_t write_uart(UART_HandleTypeDef *h_uart_device, uint8_t data)
 {
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_uart_device);
+    UNUSED(h_uart_device);
+
+    /* Operación no bloqueante para la aplicación: Encolar y retornar */
+    return xQueueSend(g_uart_driver.device_tx_queue, &data, 0ul);
 }
 
-void read_uart(UART_HandleTypeDef *h_uart_device)
+BaseType_t read_uart(UART_HandleTypeDef *h_uart_device, uint8_t *p_data, TickType_t xTicksToWait)
 {
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_uart_device);
+    UNUSED(h_uart_device);
+
+    /* Bloquea a la tarea consumidora si la cola de recepción está vacía */
+    return xQueueReceive(g_uart_driver.device_rx_queue, p_data, xTicksToWait);
 }
 
-void ioctl_uart(UART_HandleTypeDef *h_uart_device)
+void ioctl_uart(UART_HandleTypeDef *h_uart_device, uint32_t request, void *arg)
 {
-	/* Prevent unused argument(s) compilation warning */
-	UNUSED(h_uart_device);
+    UNUSED(h_uart_device);
+    UNUSED(arg);
+
+    /* Reserva para manipulación dinámica del driver (Polling, IT, DMA) */
+    g_uart_driver.ioctl_mode = request;
 }
 
 /********************** end of file ******************************************/

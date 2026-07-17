@@ -1,5 +1,5 @@
-../app/src/task_uart_interface.c:66:6:open_uart	1
-../app/src/task_uart_interface.c:72:6:release_uart	1
-../app/src/task_uart_interface.c:78:6:write_uart	1
-../app/src/task_uart_interface.c:84:6:read_uart	1
-../app/src/task_uart_interface.c:90:6:ioctl_uart	1
+../app/src/task_uart_interface.c:68:6:open_uart	5
+../app/src/task_uart_interface.c:92:6:release_uart	5
+../app/src/task_uart_interface.c:103:12:write_uart	1
+../app/src/task_uart_interface.c:111:12:read_uart	1
+../app/src/task_uart_interface.c:119:6:ioctl_uart	1

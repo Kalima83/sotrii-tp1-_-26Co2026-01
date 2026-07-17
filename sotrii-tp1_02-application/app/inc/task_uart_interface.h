@@ -41,6 +41,8 @@ extern "C" {
 #endif
 
 /********************** inclusions *******************************************/
+#include "stm32f4xx_hal.h"
+#include "FreeRTOS.h"
 
 /********************** macros ***********************************************/
 
@@ -49,13 +51,18 @@ extern "C" {
 /********************** external data declaration ****************************/
 
 /********************** external functions declaration ***********************/
+/* Inicializa y libera las colas, semáforos y asigna el periférico físico */
 extern void open_uart(UART_HandleTypeDef *h_uart_device);
 extern void release_uart(UART_HandleTypeDef *h_uart_device);
 
-extern void write_uart(UART_HandleTypeDef *h_uart_device);
-extern void read_uart(UART_HandleTypeDef *h_uart_device);
+/* write_uart: añade un byte a la cola de transmisión asíncrona (No bloquea la aplicación) */
+extern BaseType_t write_uart(UART_HandleTypeDef *h_uart_device, uint8_t data);
 
-extern void ioctl_uart(UART_HandleTypeDef *h_uart_device);
+/* read_uart: extrae un byte de la cola de recepción asíncrona (Bloqueante con timeout) */
+extern BaseType_t read_uart(UART_HandleTypeDef *h_uart_device, uint8_t *p_data, TickType_t xTicksToWait);
+
+/* ioctl_uart: permite configurar parámetros o modos de operación dinámicamente */
+extern void ioctl_uart(UART_HandleTypeDef *h_uart_device, uint32_t request, void *arg);
 
 /********************** End of CPP guard *************************************/
 #ifdef __cplusplus

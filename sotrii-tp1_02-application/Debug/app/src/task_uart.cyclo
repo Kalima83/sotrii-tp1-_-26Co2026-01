@@ -1,2 +1,2 @@
-../app/src/task_uart.c:78:6:task_uart_tx	1
-../app/src/task_uart.c:110:6:task_uart_rx	1
+../app/src/task_uart.c:79:6:task_uart_tx	3
+../app/src/task_uart.c:128:6:task_uart_rx	2
