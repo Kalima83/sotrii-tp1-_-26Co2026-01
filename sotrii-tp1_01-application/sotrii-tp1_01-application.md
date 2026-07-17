@@ -6,37 +6,37 @@ Este sistema implementa una arquitectura basada en **FreeRTOS** (bajo la capa CM
 
 ## 1. Arquitectura General y Flujo de Trabajo
 
-El objetivo principal de este diseño es el desacoplamiento de capas. En lugar de que las tareas de la capa 
-de aplicación (`task_sender`) invoquen funciones bloqueantes de hardware directas, estas interactúan con 
-un **middleware de interfaz** (`task_i2c_interface`).
+El objetivo principal de este diseño es el desacoplamiento de capas. En lugar de que las tareas de la capa de aplicación (`task_sender`) invoquen funciones bloqueantes de hardware directas, estas interactúan con un **middleware de interfaz** (`task_i2c_interface`).
 
-Este middleware empaqueta y encola las peticiones de transmisión en una cola de mensajes de FreeRTOS 
-(`Queue`), delegando el control físico del bus a tareas dedicadas de menor nivel (`task_i2c_tx`). 
-Esto permite maximizar la disponibilidad de la CPU mientras el periférico procesa los datos.
+Este middleware empaqueta y encola las peticiones de transmisión en una cola de mensajes de FreeRTOS (`Queue`), delegando el control físico del bus a tareas dedicadas de menor nivel (`task_i2c_tx`). Esto permite maximizar la disponibilidad de la CPU mientras el periférico procesa los datos.
 
 ---
+
+```text
 +-------------------------------------------------------+
 |                 CAPA DE APLICACIÓN                    |
 |   [task_sender.c]              [task_receiver.c]      |
 +---------+------------------------------^--------------+
-| (write_i2c)                  |
-v                              |
+          |                              |
+          | (write_i2c)                  | (read_i2c)
+          v                              |
 +----------------------------------------+--------------+
 |            INTERFAZ / MIDDLEWARE (DRIVER)             |
 |              [task_i2c_interface.c/.h]                |
 +---------+------------------------------+--------------+
-| (xQueueSend)                 ^ (xQueueReceive)
-v                              |
-[ queue_tx ]                   [ queue_rx ]
-|                              ^
-v (xQueueReceive)              | (xQueueSend)
-+---------+------------------------------+--------------+
+          |                              ^
+          | (xQueueSend)                 | (xQueueReceive)
+          v                              |
+     [ queue_tx ]                  [ queue_rx ]
+          |                              ^
+          | (xQueueReceive)              | (xQueueSend)
+          v                              |
++----------------------------------------+--------------+
 |                 CAPA DE BAJO NIVEL                    |
 |                    [task_i2c.c]                       |
 +-------------------------------------------------------+
 
 ---
-
 ## 2. Análisis Detallado por Archivo
 
 ### 📄 `app.c` (Inicialización de la Aplicación)
