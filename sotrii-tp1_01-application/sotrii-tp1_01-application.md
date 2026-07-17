@@ -35,7 +35,7 @@ Este middleware empaqueta y encola las peticiones de transmisión en una cola de
 |                 CAPA DE BAJO NIVEL                    |
 |                    [task_i2c.c]                       |
 +-------------------------------------------------------+
-
+```
 ---
 ## 2. Análisis Detallado por Archivo
 
